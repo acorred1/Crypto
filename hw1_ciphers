@@ -1,0 +1,108 @@
+#!/usr/bin/env python2.7 
+
+"""Attempts to decrypt messages that were encrypted with the same one time pad."""
+
+import sys, argparse, string
+
+def parse_arguments():
+    """Parses commandline options, returns namespace object."""
+    parser = argparse.ArgumentParser( description=__doc__.strip(),\
+    formatter_class=argparse.RawDescriptionHelpFormatter)	
+    parser.add_argument('--messages','-m',help='Text file of messages to be decrypted\
+    which must be HEX encoded. Only the last message is decoded. All are assumed to \
+    encoded with the same stream cipher key.' ,type=argparse.FileType('r'),dest='m')
+    return parser.parse_args() 
+
+
+def read_msg(file):
+    """Read and parse messages from file, and return string."""
+    for line in file:
+        if line.strip().endswith(':') or line.isspace(): continue
+        else: yield line.strip()
+
+#Taken from Dan Boneh's coursera class
+def strxor(a, b):     # xor two strings of different lengths
+    if len(a) > len(b):
+        return "".join([chr(ord(x) ^ ord(y)) for (x, y) in zip(a[:len(b)], b)])
+    else:
+        return "".join([chr(ord(x) ^ ord(y)) for (x, y) in zip(a, b[:len(a)])])
+
+
+def main(args):
+    """Decrypts last message."""
+    options = parse_arguments()
+    #temp = [str(int(msg,16)) for msg in read_msg(options.m)]
+    #or_msgs = [ ''.join([ chr(int(m[i:i+2])) for i in range(0,len(m)-1,2)]) for m in temp]
+
+    or_msgs = [ m.decode("hex") for m in read_msg(options.m) ]
+
+    xor_msgs = [strxor(or_msgs[i],or_msgs[len(or_msgs)-1]) for i in range(len(or_msgs)-1) ]
+
+    true = ['-']*len(or_msgs[len(or_msgs)-1]) 
+         
+    space = True
+    #Finding spaces
+    for i in range(len(true)):
+        for m in xor_msgs:
+            if i > len(m)-1: continue
+            elif m[i] != '\x00' and m[i] not in string.letters: space = False
+        if space: true[i] = ' '
+        else: space = True
+
+
+    #Find spaces in the other strings
+    space_locations = []
+    for k in range(len(or_msgs)-1):
+        m_spaces = []
+        xor_others = [strxor(or_msgs[i],or_msgs[k]) for i in range(len(or_msgs)) if i != k]
+        for i in range(len(or_msgs[k])):
+            for m in xor_others:
+                if i > len(m)-1: continue
+                elif m[i] != '\x00' and m[i] not in string.letters: space = False
+            if space: m_spaces.append(i)
+            else: space = True
+        space_locations.append(m_spaces)
+
+
+
+    #Decode msg based on spaces
+    for i in range(len(space_locations)):
+        m = space_locations[i]
+        for pos in m:
+            if pos <= (len(true)-1): true[pos] = xor_msgs[i][pos].swapcase()
+
+
+    #Decode other strings to try to guess some letters
+    for k in range(len(or_msgs)-1):
+        xor_others = { i: strxor(or_msgs[i],or_msgs[k]) for i in range(len(or_msgs)-1) if i != k}
+        message = ['-' for j in range(len(or_msgs[k]))]
+        for i in range(len(space_locations)):
+            m = space_locations[i]
+            for pos in m:
+                if k == i: message[pos] = ' ' 
+                elif pos <= (len(message)-1): message[pos] = xor_others[i][pos].swapcase()
+        print message
+        
+        
+    for m in xor_msgs:
+        print [c for c in m]
+
+
+    print true
+
+    secret = 'The secret message is: When using a stream cipher, never use the key more than once'
+    key = strxor(secret,or_msgs[len(or_msgs)-1])
+
+    for m in or_msgs:
+        print strxor(key,m)
+
+
+if __name__ == "__main__" :
+
+    try:
+        sys.exit(main(sys.argv))
+    except EnvironmentError as (errno,strerr):
+        sys.stderr.write("ERROR: " + strerr + "\n")
+        sys.exit(errno)
+
+# vim: tabstop=4 expandtab shiftwidth=4

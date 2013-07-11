@@ -1,0 +1,38 @@
+#!/usr/bin/env python2.7 
+
+import sys
+
+MSGS = ['this is easy', 'A B C D E ', ' c c c c c', 'A secret message']
+
+def strxor(a, b):     # xor two strings of different lengths
+    if len(a) > len(b):
+        return "".join([chr(ord(x) ^ ord(y)) for (x, y) in zip(a[:len(b)], b)])
+    else:
+        return "".join([chr(ord(x) ^ ord(y)) for (x, y) in zip(a, b[:len(a)])])
+
+def random(size=16):
+    return open("/dev/urandom").read(size)
+
+def encrypt(key, msg):
+    c = strxor(key, msg)
+    print
+    print c.encode('hex')
+    return c.encode('hex')
+
+def main():
+    key = random(1024)
+    ciphertexts = [encrypt(key, msg) for msg in MSGS]
+    print key
+
+    or_msgs = [m.decode('hex') for m in ciphertexts]
+    xor_msgs = [strxor(or_msgs[i],key) for i in range(len(MSGS)) ]
+    print xor_msgs
+
+
+if __name__ == "__main__" :
+
+    try:
+        sys.exit(main())
+    except EnvironmentError as (errno,strerr):
+        sys.stderr.write("ERROR: " + strerr + "\n")
+        sys.exit(errno)
