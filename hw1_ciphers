@@ -31,6 +31,9 @@ def strxor(a, b):     # xor two strings of different lengths
 def main(args):
     """Decrypts last message."""
     options = parse_arguments()
+
+    #NEEDS REFACTORING
+
     #temp = [str(int(msg,16)) for msg in read_msg(options.m)]
     #or_msgs = [ ''.join([ chr(int(m[i:i+2])) for i in range(0,len(m)-1,2)]) for m in temp]
 
